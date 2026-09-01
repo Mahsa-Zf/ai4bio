@@ -1,0 +1,212 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sql_database_setup package &mdash; Ai4Bio 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="query package" href="query.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Ai4Bio
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">ai4bio</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="embedding.html">embedding package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qdrant_database_setup.html">qdrant_database_setup package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="query.html">query package</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">sql_database_setup package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-sql_database_setup.sql_database">sql_database_setup.sql_database module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#sql_database_setup.sql_database.create_nlp_pipeline"><code class="docutils literal notranslate"><span class="pre">create_nlp_pipeline()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sql_database_setup.sql_database.load_engine"><code class="docutils literal notranslate"><span class="pre">load_engine()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sql_database_setup.sql_database.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sql_database_setup.sql_database.parse_args"><code class="docutils literal notranslate"><span class="pre">parse_args()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sql_database_setup.sql_database.row_reader"><code class="docutils literal notranslate"><span class="pre">row_reader()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-sql_database_setup">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Ai4Bio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">ai4bio</a></li>
+      <li class="breadcrumb-item active">sql_database_setup package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/sql_database_setup.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="sql-database-setup-package">
+<h1>sql_database_setup package<a class="headerlink" href="#sql-database-setup-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-sql_database_setup.sql_database">
+<span id="sql-database-setup-sql-database-module"></span><h2>sql_database_setup.sql_database module<a class="headerlink" href="#module-sql_database_setup.sql_database" title="Link to this heading"></a></h2>
+<p>Split PubMed abstracts into sentences and bulk-load them into MySQL.</p>
+<p>This module is intended to be run once per TSV input file. It creates the
+sentences table if needed, tokenizes title/abstract records into sentences, and
+inserts them in batches while skipping duplicate (pubmed_id, sentence_number)
+entries via INSERT IGNORE.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="sql_database_setup.sql_database.create_nlp_pipeline">
+<span class="sig-prename descclassname"><span class="pre">sql_database_setup.sql_database.</span></span><span class="sig-name descname"><span class="pre">create_nlp_pipeline</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sql_database_setup/sql_database.html#create_nlp_pipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sql_database_setup.sql_database.create_nlp_pipeline" title="Link to this definition"></a></dt>
+<dd><p>Create the spaCy pipeline used to segment text into sentences.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A minimal English spaCy pipeline configured with the
+sentencizer component.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>spacy.Language</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sql_database_setup.sql_database.load_engine">
+<span class="sig-prename descclassname"><span class="pre">sql_database_setup.sql_database.</span></span><span class="sig-name descname"><span class="pre">load_engine</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sql_database_setup/sql_database.html#load_engine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sql_database_setup.sql_database.load_engine" title="Link to this definition"></a></dt>
+<dd><p>Create the SQLAlchemy engine for the local MySQL database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Database engine loaded from mysql.txt.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>sqlalchemy.engine.Engine</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sql_database_setup.sql_database.main">
+<span class="sig-prename descclassname"><span class="pre">sql_database_setup.sql_database.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sql_database_setup/sql_database.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sql_database_setup.sql_database.main" title="Link to this definition"></a></dt>
+<dd><p>Process a TSV file and bulk-insert sentence rows into MySQL.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sql_database_setup.sql_database.parse_args">
+<span class="sig-prename descclassname"><span class="pre">sql_database_setup.sql_database.</span></span><span class="sig-name descname"><span class="pre">parse_args</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sql_database_setup/sql_database.html#parse_args"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sql_database_setup.sql_database.parse_args" title="Link to this definition"></a></dt>
+<dd><p>Parse command-line arguments for the sentence-loading job.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Parsed arguments including the input TSV path, worker
+count, and insertion batch size.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>argparse.Namespace</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sql_database_setup.sql_database.row_reader">
+<span class="sig-prename descclassname"><span class="pre">sql_database_setup.sql_database.</span></span><span class="sig-name descname"><span class="pre">row_reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sql_database_setup/sql_database.html#row_reader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sql_database_setup.sql_database.row_reader" title="Link to this definition"></a></dt>
+<dd><p>Yield title/abstract pairs as (text, pmid) records for spaCy processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> – Path to the input TSV file.</p>
+</dd>
+<dt class="field-even">Yields<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>tuple[str, str]</em> – A combined title-and-abstract string and its PMID.</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The title is prepended to the abstract, with the title normalized to end
+with a sentence terminator when needed. Records with neither a title nor
+an abstract are skipped.</p>
+</dd></dl>
+
+</section>
+<section id="module-sql_database_setup">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-sql_database_setup" title="Link to this heading"></a></h2>
+<p>Utilities for preparing PubMed text data and loading it into MySQL.</p>
+<p>This package handles the ingestion pipeline that parses TSV records, splits
+abstracts into sentences, and stores them in the database table used by the
+embedding and search workflows.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="query.html" class="btn btn-neutral float-left" title="query package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Masha Zamani.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

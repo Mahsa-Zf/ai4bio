@@ -1,0 +1,344 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>embedding.embed &mdash; Ai4Bio 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Ai4Bio
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/modules.html">ai4bio</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Ai4Bio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">embedding.embed</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for embedding.embed</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Embed PubMed sentences into vectors and upload them to Qdrant.</span>
+
+<span class="sd">This module runs as a worker in a SLURM array. Each process is assigned a</span>
+<span class="sd">subset of sentence IDs, reads rows from MySQL, encodes them with a sentence</span>
+<span class="sd">transformer, and writes vectors to Qdrant while checkpointing its progress.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sentence_transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">SentenceTransformer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_engine</span><span class="p">,</span> <span class="n">text</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qdrant_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">QdrantClient</span>
+
+
+<span class="n">COLLECTION_NAME</span> <span class="o">=</span> <span class="s2">&quot;pubmed_sbiobert_v2&quot;</span>
+<span class="n">MODEL_NAME</span> <span class="o">=</span> <span class="s2">&quot;pritamdeka/S-BioBert-snli-multinli-stsb&quot;</span>
+<span class="n">CHUNK_SIZE</span> <span class="o">=</span> <span class="mi">100_000</span>  <span class="c1"># rows read + encoded per page</span>
+
+
+<div class="viewcode-block" id="get_device_and_batch_size">
+<a class="viewcode-back" href="../../api/embedding.html#embedding.embed.get_device_and_batch_size">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_device_and_batch_size</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the best available compute device and embedding batch size.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple[str, int]: The device name and a batch size suited to that device.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+        <span class="k">return</span> <span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="mi">256</span>
+    <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">mps</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+        <span class="k">return</span> <span class="s2">&quot;mps&quot;</span><span class="p">,</span> <span class="mi">64</span>
+    <span class="k">return</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="mi">64</span></div>
+
+
+
+<div class="viewcode-block" id="set_num_threads">
+<a class="viewcode-back" href="../../api/embedding.html#embedding.embed.set_num_threads">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">set_num_threads</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configure the number of CPU threads used by PyTorch.</span>
+
+<span class="sd">    The value is taken from the SLURM task environment when available; otherwise</span>
+<span class="sd">    it falls back to the default CPU count. This helps SentenceTransformers make</span>
+<span class="sd">    efficient use of CPU resources during embedding.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">set_num_threads</span><span class="p">(</span>
+        <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_CPUS_PER_TASK&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="ow">or</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_engine">
+<a class="viewcode-back" href="../../api/embedding.html#embedding.embed.load_engine">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_engine</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create and return a SQLAlchemy engine configured for MySQL.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        sqlalchemy.engine.Engine: A SQLAlchemy engine connected to the database</span>
+<span class="sd">        described in the local mysql.txt file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;mysql.txt&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">create_engine</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="n">pool_pre_ping</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_id_range">
+<a class="viewcode-back" href="../../api/embedding.html#embedding.embed.get_id_range">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_id_range</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">num_tasks</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the sentence ID slice assigned to a worker.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        engine: SQLAlchemy engine for the MySQL database.</span>
+<span class="sd">        task_id: Index of the current worker in the SLURM array.</span>
+<span class="sd">        num_tasks: Total number of workers in the array.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple[int, int]: The inclusive lower bound and exclusive upper bound of</span>
+<span class="sd">        the IDs to process in this task.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">engine</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="n">text</span><span class="p">(</span><span class="s2">&quot;SELECT MIN(sentence_id), MAX(sentence_id) FROM sentences&quot;</span><span class="p">)</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">one</span><span class="p">()</span>
+    <span class="n">min_id</span><span class="p">,</span> <span class="n">max_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">span</span> <span class="o">=</span> <span class="n">max_id</span> <span class="o">-</span> <span class="n">min_id</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">per_task</span> <span class="o">=</span> <span class="p">(</span><span class="n">span</span> <span class="o">+</span> <span class="n">num_tasks</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="n">num_tasks</span>
+    <span class="n">lo</span> <span class="o">=</span> <span class="n">min_id</span> <span class="o">+</span> <span class="n">task_id</span> <span class="o">*</span> <span class="n">per_task</span>
+    <span class="n">hi</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">lo</span> <span class="o">+</span> <span class="n">per_task</span><span class="p">,</span> <span class="n">max_id</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span></div>
+
+
+
+<div class="viewcode-block" id="get_checkpoint_path">
+<a class="viewcode-back" href="../../api/embedding.html#embedding.embed.get_checkpoint_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_checkpoint_path</span><span class="p">(</span><span class="n">task_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the path used to store the last processed sentence ID for a task.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        task_id: Index of the current worker.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: Path to the checkpoint file for that task.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;last_id_</span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">.txt&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="load_last_id">
+<a class="viewcode-back" href="../../api/embedding.html#embedding.embed.load_last_id">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_last_id</span><span class="p">(</span><span class="n">task_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read the last processed sentence ID from the checkpoint for a task.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        task_id: Index of the current worker.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        int | None: The last processed sentence ID, or None if no checkpoint yet</span>
+<span class="sd">        exists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">get_checkpoint_path</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="save_last_id">
+<a class="viewcode-back" href="../../api/embedding.html#embedding.embed.save_last_id">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_last_id</span><span class="p">(</span><span class="n">task_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">last_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Persist the last processed sentence ID for a task.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        task_id: Index of the current worker.</span>
+<span class="sd">        last_id: Final sentence ID processed in the current batch.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">get_checkpoint_path</span><span class="p">(</span><span class="n">task_id</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">last_id</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="create_qdrant_client">
+<a class="viewcode-back" href="../../api/embedding.html#embedding.embed.create_qdrant_client">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_qdrant_client</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">QdrantClient</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create and return the Qdrant client used for uploads.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        QdrantClient: Connected client for the local Qdrant server.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">QdrantClient</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">&quot;assemblix2019&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">6333</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../api/embedding.html#embedding.embed.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run a single embedding worker for one range of sentence IDs.</span>
+
+<span class="sd">    The function sets up the embedding model, locates the task&#39;s ID slice,</span>
+<span class="sd">    resumes from a checkpoint if present, and streams rows from MySQL into Qdrant</span>
+<span class="sd">    until the assigned range is fully processed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">set_num_threads</span><span class="p">()</span>
+    <span class="n">device</span><span class="p">,</span> <span class="n">batch_size</span> <span class="o">=</span> <span class="n">get_device_and_batch_size</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot; Number of cores used: </span><span class="si">{</span><span class="n">torch</span><span class="o">.</span><span class="n">get_num_threads</span><span class="p">()</span><span class="si">}</span><span class="s2">, &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;device=</span><span class="si">{</span><span class="n">device</span><span class="si">}</span><span class="s2">, batch_size=</span><span class="si">{</span><span class="n">batch_size</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">SentenceTransformer</span><span class="p">(</span><span class="n">MODEL_NAME</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">device</span> <span class="o">==</span> <span class="s2">&quot;cuda&quot;</span><span class="p">:</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">half</span><span class="p">()</span>
+
+    <span class="n">engine</span> <span class="o">=</span> <span class="n">load_engine</span><span class="p">()</span>
+
+    <span class="n">task_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_ARRAY_TASK_ID&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="n">num_tasks</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_ARRAY_TASK_COUNT&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">get_id_range</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">num_tasks</span><span class="p">)</span>
+    <span class="n">last_id</span> <span class="o">=</span> <span class="n">load_last_id</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">last_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">last_id</span> <span class="o">=</span> <span class="n">lo</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;[task </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">num_tasks</span><span class="si">}</span><span class="s2">] device=</span><span class="si">{</span><span class="n">device</span><span class="si">}</span><span class="s2"> &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;range=[</span><span class="si">{</span><span class="n">lo</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">hi</span><span class="si">}</span><span class="s2">) resume_from=</span><span class="si">{</span><span class="n">last_id</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">client</span> <span class="o">=</span> <span class="n">create_qdrant_client</span><span class="p">()</span>
+
+    <span class="n">total_uploaded</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">page</span> <span class="o">=</span> <span class="n">text</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            SELECT sentence_id, sentence</span>
+<span class="sd">            FROM sentences</span>
+<span class="sd">            WHERE sentence_id &gt; :last_id AND sentence_id &lt; :hi</span>
+<span class="sd">            ORDER BY sentence_id</span>
+<span class="sd">            LIMIT :limit</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+        <span class="n">chunk_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql</span><span class="p">(</span>
+            <span class="n">page</span><span class="p">,</span>
+            <span class="n">engine</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;last_id&quot;</span><span class="p">:</span> <span class="n">last_id</span><span class="p">,</span> <span class="s2">&quot;hi&quot;</span><span class="p">:</span> <span class="n">hi</span><span class="p">,</span> <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="n">CHUNK_SIZE</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">chunk_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">last_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">chunk_df</span><span class="p">[</span><span class="s2">&quot;sentence_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">chunk_df</span> <span class="o">=</span> <span class="n">chunk_df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;sentence&quot;</span><span class="p">])</span>
+        <span class="n">chunk_df</span> <span class="o">=</span> <span class="n">chunk_df</span><span class="p">[</span><span class="n">chunk_df</span><span class="p">[</span><span class="s2">&quot;sentence&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">!=</span> <span class="s2">&quot;&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">chunk_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">texts</span> <span class="o">=</span> <span class="n">chunk_df</span><span class="p">[</span><span class="s2">&quot;sentence&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">vectors</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span>
+            <span class="n">texts</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+            <span class="n">convert_to_numpy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">show_progress_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">normalize_embeddings</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">ids</span> <span class="o">=</span> <span class="n">chunk_df</span><span class="p">[</span><span class="s2">&quot;sentence_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">upload_collection</span><span class="p">(</span>
+            <span class="n">collection_name</span><span class="o">=</span><span class="n">COLLECTION_NAME</span><span class="p">,</span>
+            <span class="n">vectors</span><span class="o">=</span><span class="n">vectors</span><span class="p">,</span>
+            <span class="n">ids</span><span class="o">=</span><span class="n">ids</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">save_last_id</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">last_id</span><span class="p">)</span>
+        <span class="n">total_uploaded</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[task </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">total_uploaded</span><span class="si">}</span><span class="s2"> points (through sentence_id </span><span class="si">{</span><span class="n">last_id</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[task </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">] DONE. uploaded </span><span class="si">{</span><span class="n">total_uploaded</span><span class="si">}</span><span class="s2"> points.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Masha Zamani.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
