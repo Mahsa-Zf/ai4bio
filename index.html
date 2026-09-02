@@ -41,7 +41,7 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">API:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Ai4Bio API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="api/modules.html">ai4bio</a></li>
 </ul>
@@ -87,13 +87,66 @@ bulk embedding uploads.</p></li>
 database.</p></li>
 </ul>
 <div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<p class="caption" role="heading"><span class="caption-text">Ai4Bio API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="api/modules.html">ai4bio</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="api/embedding.html">embedding package</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/qdrant_database_setup.html">qdrant_database_setup package</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/query.html">query package</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/sql_database_setup.html">sql_database_setup package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/embedding.html">embedding package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/embedding.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/embedding.html#module-embedding.embed">embedding.embed module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/embedding.html#embedding.embed.create_qdrant_client"><code class="docutils literal notranslate"><span class="pre">create_qdrant_client()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/embedding.html#embedding.embed.get_checkpoint_path"><code class="docutils literal notranslate"><span class="pre">get_checkpoint_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/embedding.html#embedding.embed.get_device_and_batch_size"><code class="docutils literal notranslate"><span class="pre">get_device_and_batch_size()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/embedding.html#embedding.embed.get_id_range"><code class="docutils literal notranslate"><span class="pre">get_id_range()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/embedding.html#embedding.embed.load_engine"><code class="docutils literal notranslate"><span class="pre">load_engine()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/embedding.html#embedding.embed.load_last_id"><code class="docutils literal notranslate"><span class="pre">load_last_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/embedding.html#embedding.embed.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/embedding.html#embedding.embed.save_last_id"><code class="docutils literal notranslate"><span class="pre">save_last_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/embedding.html#embedding.embed.set_num_threads"><code class="docutils literal notranslate"><span class="pre">set_num_threads()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/embedding.html#module-embedding.reindex">embedding.reindex module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/embedding.html#embedding.reindex.create_qdrant_client"><code class="docutils literal notranslate"><span class="pre">create_qdrant_client()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/embedding.html#embedding.reindex.reindex_collection"><code class="docutils literal notranslate"><span class="pre">reindex_collection()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/embedding.html#module-embedding">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/qdrant_database_setup.html">qdrant_database_setup package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/qdrant_database_setup.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/qdrant_database_setup.html#module-qdrant_database_setup.setup_qdrnt">qdrant_database_setup.setup_qdrnt module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/qdrant_database_setup.html#qdrant_database_setup.setup_qdrnt.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/qdrant_database_setup.html#module-qdrant_database_setup">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/query.html">query package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/query.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/query.html#module-query.query_qdrant">query.query_qdrant module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/query.html#query.query_qdrant.fetch_rows"><code class="docutils literal notranslate"><span class="pre">fetch_rows()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/query.html#query.query_qdrant.load_engine"><code class="docutils literal notranslate"><span class="pre">load_engine()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/query.html#query.query_qdrant.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/query.html#query.query_qdrant.search"><code class="docutils literal notranslate"><span class="pre">search()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/query.html#query.query_qdrant.show"><code class="docutils literal notranslate"><span class="pre">show()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/query.html#module-query">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/sql_database_setup.html">sql_database_setup package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/sql_database_setup.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/sql_database_setup.html#module-sql_database_setup.sql_database">sql_database_setup.sql_database module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.create_nlp_pipeline"><code class="docutils literal notranslate"><span class="pre">create_nlp_pipeline()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.load_engine"><code class="docutils literal notranslate"><span class="pre">load_engine()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.parse_args"><code class="docutils literal notranslate"><span class="pre">parse_args()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.row_reader"><code class="docutils literal notranslate"><span class="pre">row_reader()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/sql_database_setup.html#module-sql_database_setup">Module contents</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
