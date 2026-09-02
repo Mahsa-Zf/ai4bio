@@ -15,8 +15,8 @@ Documentation site: https://mahsa-zf.github.io/ai4bio/
 ## Quickstart
 
 Prerequisites
-- Python 3.10+
-- (Optional) Qdrant running for vector DB features
+- Python 3.14
+- Qdrant running for vector DB features
 
 Setup
 
