@@ -22,7 +22,6 @@ Package overview
   database.
 
 .. toctree::
-   :maxdepth: 2
-   :caption: API:
+   :caption: Ai4Bio API
 
    api/modules
