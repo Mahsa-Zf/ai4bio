@@ -127,18 +127,19 @@ def main():
             "'quit' or Ctrl-D to exit."
         )
         while True:
-            try:
-                q = input("\nquery> ").strip()
-            except (EOFError, KeyboardInterrupt):
-                print("\nbye")
-                break
+            q = input("\nquery> ").strip()
             if not q:
                 continue
             if q.lower() in {"quit", "exit"}:
-                print("bye")
-                break
-            points = search(model, client, q, args.top_k, args.threshold)
-            show(points, engine)
+                print("bye"); break
+            # to make the interactive mode more robust against time out errors
+            # catch any exceptions and allow the user to try again without restarting the program
+            try:
+                points = search(model, client, q, args.top_k, args.threshold)
+                show(points, engine)
+            except Exception as exc:
+                print(f"Query failed: {exc}")
+                print("You can try another query.")
 
 
 if __name__ == "__main__":
