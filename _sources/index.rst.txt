@@ -13,13 +13,14 @@ transformer, and querying the resulting embeddings in Qdrant.
 Package overview
 ----------------
 
-- ``embedding``: loads sentence rows, encodes them into vectors, and uploads them
-  to the vector database.
-- ``qdrant_database_setup``: creates and configures the Qdrant collection for
-  bulk embedding uploads.
-- ``query``: embeds a query string and searches for similar sentences in Qdrant.
 - ``sql_database_setup``: parses TSV records and inserts sentence rows into the
   database.
+- ``qdrant_database_setup``: creates and configures the Qdrant collection for
+  bulk embedding uploads.
+- ``embedding``: loads sentence rows, encodes them into vectors, and uploads them
+  to the vector database.
+- ``query``: embeds a query string and searches for similar sentences in Qdrant.
+
 
 .. toctree::
    :caption: Ai4Bio API

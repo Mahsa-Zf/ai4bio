@@ -78,18 +78,40 @@ transformer, and querying the resulting embeddings in Qdrant.</p>
 <section id="package-overview">
 <h2>Package overview<a class="headerlink" href="#package-overview" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">embedding</span></code>: loads sentence rows, encodes them into vectors, and uploads them
-to the vector database.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">qdrant_database_setup</span></code>: creates and configures the Qdrant collection for
-bulk embedding uploads.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">query</span></code>: embeds a query string and searches for similar sentences in Qdrant.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">sql_database_setup</span></code>: parses TSV records and inserts sentence rows into the
 database.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">qdrant_database_setup</span></code>: creates and configures the Qdrant collection for
+bulk embedding uploads.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">embedding</span></code>: loads sentence rows, encodes them into vectors, and uploads them
+to the vector database.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">query</span></code>: embeds a query string and searches for similar sentences in Qdrant.</p></li>
 </ul>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Ai4Bio API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="api/modules.html">ai4bio</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/sql_database_setup.html">sql_database_setup package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/sql_database_setup.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/sql_database_setup.html#module-sql_database_setup.sql_database">sql_database_setup.sql_database module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.create_nlp_pipeline"><code class="docutils literal notranslate"><span class="pre">create_nlp_pipeline()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.load_engine"><code class="docutils literal notranslate"><span class="pre">load_engine()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.parse_args"><code class="docutils literal notranslate"><span class="pre">parse_args()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.row_reader"><code class="docutils literal notranslate"><span class="pre">row_reader()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/sql_database_setup.html#module-sql_database_setup">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/qdrant_database_setup.html">qdrant_database_setup package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/qdrant_database_setup.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/qdrant_database_setup.html#module-qdrant_database_setup.setup_qdrnt">qdrant_database_setup.setup_qdrnt module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/qdrant_database_setup.html#qdrant_database_setup.setup_qdrnt.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/qdrant_database_setup.html#module-qdrant_database_setup">Module contents</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="api/embedding.html">embedding package</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="api/embedding.html#submodules">Submodules</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/embedding.html#module-embedding.embed">embedding.embed module</a><ul>
@@ -112,15 +134,6 @@ database.</p></li>
 <li class="toctree-l3"><a class="reference internal" href="api/embedding.html#module-embedding">Module contents</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="api/qdrant_database_setup.html">qdrant_database_setup package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="api/qdrant_database_setup.html#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="api/qdrant_database_setup.html#module-qdrant_database_setup.setup_qdrnt">qdrant_database_setup.setup_qdrnt module</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="api/qdrant_database_setup.html#qdrant_database_setup.setup_qdrnt.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="api/qdrant_database_setup.html#module-qdrant_database_setup">Module contents</a></li>
-</ul>
-</li>
 <li class="toctree-l2"><a class="reference internal" href="api/query.html">query package</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="api/query.html#submodules">Submodules</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/query.html#module-query.query_qdrant">query.query_qdrant module</a><ul>
@@ -132,19 +145,6 @@ database.</p></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="api/query.html#module-query">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="api/sql_database_setup.html">sql_database_setup package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="api/sql_database_setup.html#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="api/sql_database_setup.html#module-sql_database_setup.sql_database">sql_database_setup.sql_database module</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.create_nlp_pipeline"><code class="docutils literal notranslate"><span class="pre">create_nlp_pipeline()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.load_engine"><code class="docutils literal notranslate"><span class="pre">load_engine()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.parse_args"><code class="docutils literal notranslate"><span class="pre">parse_args()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="api/sql_database_setup.html#sql_database_setup.sql_database.row_reader"><code class="docutils literal notranslate"><span class="pre">row_reader()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="api/sql_database_setup.html#module-sql_database_setup">Module contents</a></li>
 </ul>
 </li>
 </ul>
