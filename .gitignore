@@ -9,6 +9,9 @@ venv/
 # Sphinx
 docs/build/
 
+# Creds
+mysql.txt
+
 # OS
 .DS_Store
 Thumbs.db
