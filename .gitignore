@@ -6,6 +6,9 @@ __pycache__/
 venv/
 .venv/
 
+# creds
+mysql.txt
+
 # Sphinx
 docs/build/
 

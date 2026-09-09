@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# query.py — search PubMed sentences by semantic similarity.
+"""Search PubMed sentences by semantic similarity with Qdrant."""
 
 import argparse
 import shlex  # Separates interactive options from the sentence text.
@@ -12,13 +12,32 @@ from qdrant_client import models
 COLLECTION_NAME = "pubmed_sbiobert_v2"
 MODEL_NAME = "pritamdeka/S-BioBert-snli-multinli-stsb"
 
-# --- DB (same mysql.txt as the loader) ---
-with open("mysql.txt", encoding="utf-8") as f:
-    engine = create_engine(f.read().strip(), pool_pre_ping=True)
+
+def load_engine():
+    """Create the SQLAlchemy engine used to look up sentence metadata.
+
+    Returns:
+        sqlalchemy.engine.Engine: Database engine loaded from the local
+        mysql.txt credentials file.
+    """
+    with open("mysql.txt", encoding="utf-8") as f:
+        return create_engine(f.read().strip(), pool_pre_ping=True)
 
 
 def search(model, client, sentence, k, threshold):
-    """Return Qdrant points (id + score); no payload is stored."""
+    """Query Qdrant for the nearest matching sentences to a natural-language input.
+
+    Args:
+        model: Sentence-transformer model used to encode the query text.
+        client: Qdrant client connected to the vector collection.
+        sentence: Query sentence to embed and search for.
+        k: Number of nearest matches to return.
+        threshold: Optional cosine similarity minimum; values below this are
+            filtered out.
+
+    Returns:
+        list: Qdrant result points containing sentence IDs and similarity scores.
+    """
     vec = model.encode(sentence, normalize_embeddings=True).tolist()
     return client.query_points(
         collection_name=COLLECTION_NAME,
@@ -31,11 +50,18 @@ def search(model, client, sentence, k, threshold):
     ).points
 
 
-def fetch_rows(ids):
-    """Look up sentence_id -> (pubmed_id, sentence) from MySQL in one query."""
+def fetch_rows(ids, engine):
+    """Look up sentence metadata for a list of sentence IDs.
+
+    Args:
+        ids: Sequence of sentence IDs to resolve.
+        engine: SQLAlchemy engine connected to the MySQL database.
+
+    Returns:
+        dict: Mapping from sentence_id to a tuple of (pubmed_id, sentence).
+    """
     if not ids:
         return {}
-
     with engine.connect() as conn:
         rows = conn.execute(
             text(
@@ -44,24 +70,28 @@ def fetch_rows(ids):
             ),
             {"ids": tuple(ids)},
         ).all()
-
     return {r.sentence_id: (r.pubmed_id, r.sentence) for r in rows}
 
 
-def show(points):
-    """Print results, rehydrating text/PMID from MySQL."""
+def show(points, engine):
+    """Print a ranked Qdrant result set with the associated PMID and sentence text.
+
+    Args:
+        points: Sequence of Qdrant points returned by the query.
+        engine: SQLAlchemy engine used to rehydrate the original text.
+    """
     if not points:
         print("  (no matches)")
         return
-
-    lookup = fetch_rows([p.id for p in points])
-
+    lookup = fetch_rows([p.id for p in points], engine)
     for p in points:
         pmid, sentence = lookup.get(p.id, ("?", "<not found in DB>"))
         print(f"  {p.score:.3f}  [PMID {pmid}]  {sentence}")
 
 
+
 def main():
+    """Run the command-line semantic search interface."""
     ap = argparse.ArgumentParser(
         description="Search PubMed sentences by similarity."
     )
@@ -95,11 +125,12 @@ def main():
         port=args.port,
         timeout=180,
     )
+    engine = load_engine()
 
     if args.query:
         # One-shot mode uses the command-line values directly.
-        show(search(model, client, args.query, args.top_k, args.threshold))
-        return
+        points = search(model, client, args.query, args.top_k, args.threshold)
+        show(points, engine)
 
     # This parser handles options entered inside the interactive prompt.
     # Without it, the entire input—including "-k 10" and "-t 0.6"—
@@ -154,16 +185,14 @@ def main():
 
             # Only positional arguments become the sentence embedding.
             sentence = " ".join(interactive_args.sentence)
-
-            show(
-                search(
+            points = search(
                     model,
                     client,
                     sentence,
                     interactive_args.top_k,
                     interactive_args.threshold,
                 )
-            )
+            show(points,engine)
         except SystemExit:
             # argparse reports invalid options and missing values itself.
             continue
