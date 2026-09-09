@@ -73,10 +73,12 @@
 <span class="sd">&quot;&quot;&quot;Search PubMed sentences by semantic similarity with Qdrant.&quot;&quot;&quot;</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sentence_transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">SentenceTransformer</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">qdrant_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">QdrantClient</span><span class="p">,</span> <span class="n">models</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_engine</span><span class="p">,</span> <span class="n">text</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>  <span class="c1"># Separates interactive options from the sentence text.</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">sentence_transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">SentenceTransformer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qdrant_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">QdrantClient</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_engine</span><span class="p">,</span> <span class="n">text</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qdrant_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">models</span>
 
 <span class="n">COLLECTION_NAME</span> <span class="o">=</span> <span class="s2">&quot;pubmed_sbiobert_v2&quot;</span>
 <span class="n">MODEL_NAME</span> <span class="o">=</span> <span class="s2">&quot;pritamdeka/S-BioBert-snli-multinli-stsb&quot;</span>
@@ -170,6 +172,7 @@
 
 
 
+
 <div class="viewcode-block" id="main">
 <a class="viewcode-back" href="../../api/query.html#query.query_qdrant.main">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
@@ -178,7 +181,9 @@
         <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Search PubMed sentences by similarity.&quot;</span>
     <span class="p">)</span>
     <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;query&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;?&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Query sentence. Omit for interactive mode.&quot;</span>
+        <span class="s2">&quot;query&quot;</span><span class="p">,</span>
+        <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;?&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Query sentence. Omit for interactive mode.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">&quot;-k&quot;</span><span class="p">,</span>
@@ -192,7 +197,7 @@
         <span class="s2">&quot;--threshold&quot;</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Min cosine score, e.g. 0.6.&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Minimum cosine score, e.g. 0.6.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--host&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;assemblix2019&quot;</span><span class="p">)</span>
     <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--port&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">6333</span><span class="p">)</span>
@@ -200,30 +205,87 @@
 
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading model...&quot;</span><span class="p">)</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">SentenceTransformer</span><span class="p">(</span><span class="n">MODEL_NAME</span><span class="p">)</span>
-    <span class="n">client</span> <span class="o">=</span> <span class="n">QdrantClient</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">port</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">180</span><span class="p">)</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">QdrantClient</span><span class="p">(</span>
+        <span class="n">host</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">host</span><span class="p">,</span>
+        <span class="n">port</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="mi">180</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">engine</span> <span class="o">=</span> <span class="n">load_engine</span><span class="p">()</span>
 
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">query</span><span class="p">:</span>
+        <span class="c1"># One-shot mode uses the command-line values directly.</span>
         <span class="n">points</span> <span class="o">=</span> <span class="n">search</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">client</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">top_k</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">threshold</span><span class="p">)</span>
         <span class="n">show</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">engine</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span>
-            <span class="s2">&quot;Interactive search: type a sentence, Enter to search. &quot;</span>
-            <span class="s2">&quot;&#39;quit&#39; or Ctrl-D to exit.&quot;</span>
-        <span class="p">)</span>
-        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">q</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">query&gt; &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-            <span class="k">except</span> <span class="p">(</span><span class="ne">EOFError</span><span class="p">,</span> <span class="ne">KeyboardInterrupt</span><span class="p">):</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">bye&quot;</span><span class="p">)</span>
-                <span class="k">break</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">q</span><span class="p">:</span>
-                <span class="k">continue</span>
-            <span class="k">if</span> <span class="n">q</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;quit&quot;</span><span class="p">,</span> <span class="s2">&quot;exit&quot;</span><span class="p">}:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;bye&quot;</span><span class="p">)</span>
-                <span class="k">break</span>
-            <span class="n">points</span> <span class="o">=</span> <span class="n">search</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">client</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">top_k</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">threshold</span><span class="p">)</span>
-            <span class="n">show</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">engine</span><span class="p">)</span></div>
+
+    <span class="c1"># This parser handles options entered inside the interactive prompt.</span>
+    <span class="c1"># Without it, the entire input—including &quot;-k 10&quot; and &quot;-t 0.6&quot;—</span>
+    <span class="c1"># would be passed to the embedding model as sentence text.</span>
+    <span class="n">interactive_ap</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s2">&quot;query&quot;</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Interactive PubMed search.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">interactive_ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;-k&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--top-k&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">top_k</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Number of results.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">interactive_ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;-t&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--threshold&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">threshold</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Minimum cosine score.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">interactive_ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;sentence&quot;</span><span class="p">,</span>
+        <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;+&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Sentence to search.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Interactive search: type a sentence, Enter to search.&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Options: -k/--top-k N, -t/--threshold SCORE.&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&#39;quit&#39; or Ctrl-D to exit.&quot;</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">query&gt; &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">EOFError</span><span class="p">:</span>
+            <span class="c1"># Ctrl-D raises EOFError instead of returning input.</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">bye&quot;</span><span class="p">)</span>
+            <span class="k">break</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">entry</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;quit&quot;</span><span class="p">,</span> <span class="s2">&quot;exit&quot;</span><span class="p">}:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;bye&quot;</span><span class="p">)</span>
+            <span class="k">break</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># shlex.split supports quoted sentences and separates tokens</span>
+            <span class="c1"># correctly, for example: -k 10 &quot;protein binding by CXCR3&quot;.</span>
+            <span class="n">interactive_args</span> <span class="o">=</span> <span class="n">interactive_ap</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span>
+
+            <span class="c1"># Only positional arguments become the sentence embedding.</span>
+            <span class="n">sentence</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">interactive_args</span><span class="o">.</span><span class="n">sentence</span><span class="p">)</span>
+            <span class="n">points</span> <span class="o">=</span> <span class="n">search</span><span class="p">(</span>
+                    <span class="n">model</span><span class="p">,</span>
+                    <span class="n">client</span><span class="p">,</span>
+                    <span class="n">sentence</span><span class="p">,</span>
+                    <span class="n">interactive_args</span><span class="o">.</span><span class="n">top_k</span><span class="p">,</span>
+                    <span class="n">interactive_args</span><span class="o">.</span><span class="n">threshold</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="n">show</span><span class="p">(</span><span class="n">points</span><span class="p">,</span><span class="n">engine</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">SystemExit</span><span class="p">:</span>
+            <span class="c1"># argparse reports invalid options and missing values itself.</span>
+            <span class="k">continue</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid input: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Query failed: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;You can try another query.&quot;</span><span class="p">)</span></div>
 
 
 
